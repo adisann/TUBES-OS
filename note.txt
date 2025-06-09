@@ -1,0 +1,14 @@
+sudo cp /home/user/Documents/study_focus_monitor/study_focus_syscall.c /usr/src/linux-source-6.8.0/kernel/
+
+
+obj-y += study_focus_syscall.o
+
+asmlinkage long sys_get_study_focus_info(struct study_focus_info __user *info);
+
+548  common  get_study_focus_info   __x64_sys_get_study_focus_info
+
+cd /usr/src/linux-source-6.5
+make menuconfig  # hanya kalau kamu mau cek konfigurasi
+make -j$(nproc)  # compile semua (akan butuh waktu lama)
+sudo make modules_install
+sudo make install
