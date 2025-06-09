@@ -48,55 +48,18 @@ fi
 
 echo ""
 
-# Test 2: Check kernel module
-echo -e "${BLUE}[TEST 2]${NC} Checking kernel module..."
-if [ -f "study_focus.ko" ]; then
-    print_status 0 "Kernel module found"
-else
-    print_info "Module not found, compiling..."
-    make 2>/dev/null
-    if [ $? -eq 0 ]; then
-        print_status 0 "Module compilation successful"
-    else
-        print_status 1 "Module compilation failed"
-        exit 1
-    fi
-fi
 
 echo ""
 
-# Test 3: Check if module is loaded
-echo -e "${BLUE}[TEST 3]${NC} Checking if module is loaded..."
-if lsmod | grep -q "study_focus"; then
-    print_status 0 "Module is loaded"
-elif [ -f "/proc/study_focus" ]; then
-    print_status 0 "Module is working (/proc/study_focus exists)"
+echo -e "${BLUE}[TEST 4]${NC} Testing system call interface..."
+./study_focus_monitor > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_status 0 "System call executed successfully"
 else
-    print_info "Loading module..."
-    sudo insmod study_focus.ko 2>/dev/null
-    if [ $? -eq 0 ]; then
-        print_status 0 "Module loaded successfully"
-    else
-        print_status 1 "Failed to load module (need sudo?)"
-        exit 1
-    fi
+    print_status 1 "System call failed"
 fi
 
-echo ""
 
-# Test 4: Test /proc interface
-echo -e "${BLUE}[TEST 4]${NC} Testing /proc/study_focus interface..."
-if [ -f "/proc/study_focus" ]; then
-    print_status 0 "/proc/study_focus exists"
-    print_info "First read (should be initialization):"
-    echo -e "${YELLOW}$(cat /proc/study_focus)${NC}"
-    sleep 2
-    print_info "Second read (should show real data):"
-    echo -e "${YELLOW}$(cat /proc/study_focus)${NC}"
-else
-    print_status 1 "/proc/study_focus not found"
-    exit 1
-fi
 
 echo ""
 
