@@ -136,19 +136,29 @@ int main(int argc, char *argv[]) {
     
     print_header();
     
-    // Panggil system call
-    //long result = syscall(__NR_get_study_focus_info, &info);
+    // Panggil system call (FIX: uncomment dan hapus dummy data)
+    long result = syscall(__NR_get_study_focus_info, &info);
+    
+    // HAPUS DUMMY DATA INI:
+    /*
     info.active_time_sec = 3600;   // 1 jam
     info.idle_time_sec   = 1800;   // 30 menit
     info.focus_percent   =  (info.active_time_sec * 100) / 
                         (info.active_time_sec + info.idle_time_sec);
-
+    */
     
     if (result == -1) {
         printf("❌ Error: Gagal mengakses system call\n");
         printf("   Pastikan kernel sudah dikompilasi dengan system call ini!\n");
         printf("   Error detail: %s\n", strerror(errno));
         return 1;
+    }
+    
+    // Tampilkan pesan khusus untuk first run
+    if (info.active_time_sec == 0 && info.idle_time_sec == 0) {
+        printf("⏳ Initializing... Silakan jalankan lagi dalam beberapa detik.\n");
+        printf("   System call berhasil, tapi butuh 2 pembacaan untuk kalkulasi.\n\n");
+        return 0;
     }
     
     // Format waktu untuk display

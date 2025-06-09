@@ -1,11 +1,17 @@
 #include <linux/module.h>
-#include <linux/proc_fs.h>
-#include <linux/seq_file.h>
+#include <linux/kernel.h>
+#include <linux/syscalls.h>
+#include <linux/uaccess.h>
 #include <linux/jiffies.h>
 #include <linux/kernel_stat.h>
 #include <linux/smp.h>
 
-#define PROC_NAME "study_focus"
+// Struktur data yang sama dengan user-space
+struct study_focus_info {
+    unsigned long active_time_sec;
+    unsigned long idle_time_sec;
+    unsigned int focus_percent;
+};
 
 static unsigned long prev_idle, prev_total;
 
@@ -26,76 +32,60 @@ static void read_jiffies_vals(unsigned long *idle, unsigned long *total) {
     *total = user + nice + system + idle_time + iowait + irq + softirq + steal;
 }
 
-static int proc_show(struct seq_file *m, void *v) {
+// System call implementation
+SYSCALL_DEFINE1(get_study_focus_info, struct study_focus_info __user *, info) {
+    struct study_focus_info kinfo;
     unsigned long idle, total, d_idle, d_total;
-    unsigned long idle_sec, active_sec;
-    unsigned int focus;
+    
+    if (!info)
+        return -EINVAL;
     
     read_jiffies_vals(&idle, &total);
     
     if (prev_total == 0) {
+        // First call - initialize
         prev_idle = idle;
         prev_total = total;
-        seq_printf(m, "initializing...\n");
-        return 0;
-    }
-    
-    d_idle = idle - prev_idle;
-    d_total = total - prev_total;
-    
-    prev_idle = idle;
-    prev_total = total;
-    
-    // Avoid division by zero
-    if (d_total == 0) {
-        seq_printf(m, "no activity detected\n");
-        return 0;
-    }
-    
-    idle_sec = d_idle / HZ;
-    active_sec = (d_total - d_idle) / HZ;
-    
-    // Avoid division by zero
-    if ((idle_sec + active_sec) == 0) {
-        focus = 0;
+        kinfo.active_time_sec = 0;
+        kinfo.idle_time_sec = 0;
+        kinfo.focus_percent = 0;
     } else {
-        focus = (active_sec * 100) / (idle_sec + active_sec);
+        d_idle = idle - prev_idle;
+        d_total = total - prev_total;
+        
+        prev_idle = idle;
+        prev_total = total;
+        
+        if (d_total == 0) {
+            kinfo.active_time_sec = 0;
+            kinfo.idle_time_sec = 0;
+            kinfo.focus_percent = 0;
+        } else {
+            kinfo.idle_time_sec = d_idle / HZ;
+            kinfo.active_time_sec = (d_total - d_idle) / HZ;
+            
+            if ((kinfo.idle_time_sec + kinfo.active_time_sec) == 0) {
+                kinfo.focus_percent = 0;
+            } else {
+                kinfo.focus_percent = (kinfo.active_time_sec * 100) / 
+                                    (kinfo.idle_time_sec + kinfo.active_time_sec);
+            }
+        }
     }
     
-    seq_printf(m,
-        "active_time_sec=%lu\nidle_time_sec=%lu\nfocus_percent=%u\n",
-        active_sec, idle_sec, focus);
+    if (copy_to_user(info, &kinfo, sizeof(kinfo)))
+        return -EFAULT;
     
     return 0;
 }
 
-static int proc_open_cb(struct inode *inode, struct file *file) {
-    return single_open(file, proc_show, NULL);
-}
-
-static const struct proc_ops proc_fops = {
-    .proc_open = proc_open_cb,
-    .proc_read = seq_read,
-    .proc_lseek = seq_lseek,
-    .proc_release = single_release,
-};
-
 static int __init sf_init(void) {
-    struct proc_dir_entry *entry;
-    
-    entry = proc_create(PROC_NAME, 0444, NULL, &proc_fops);
-    if (!entry) {
-        pr_err("Failed to create /proc/%s\n", PROC_NAME);
-        return -ENOMEM;
-    }
-    
-    pr_info("study_focus module loaded\n");
+    pr_info("study_focus system call module loaded\n");
     return 0;
 }
 
 static void __exit sf_exit(void) {
-    remove_proc_entry(PROC_NAME, NULL);
-    pr_info("study_focus module unloaded\n");
+    pr_info("study_focus system call module unloaded\n");
 }
 
 module_init(sf_init);
@@ -104,3 +94,4 @@ module_exit(sf_exit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Study Focus via /proc/study_focus");
 MODULE_AUTHOR("Kelompok 2");
+
