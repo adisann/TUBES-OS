@@ -12,3 +12,6 @@ make menuconfig  # hanya kalau kamu mau cek konfigurasi
 make -j$(nproc)  # compile semua (akan butuh waktu lama)
 sudo make modules_install
 sudo make install
+
+
+cp /boot/config-$(uname -r) .config
