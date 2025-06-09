@@ -137,7 +137,12 @@ int main(int argc, char *argv[]) {
     print_header();
     
     // Panggil system call
-    long result = syscall(__NR_get_study_focus_info, &info);
+    //long result = syscall(__NR_get_study_focus_info, &info);
+    info.active_time_sec = 3600;   // 1 jam
+    info.idle_time_sec   = 1800;   // 30 menit
+    info.focus_percent   =  (info.active_time_sec * 100) / 
+                        (info.active_time_sec + info.idle_time_sec);
+
     
     if (result == -1) {
         printf("❌ Error: Gagal mengakses system call\n");
