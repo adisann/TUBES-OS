@@ -2,19 +2,24 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/jiffies.h>
-#include <linux/ktime.h>
-#include <linux/kstat.h>
+#include <linux/kernel_stat.h>
 
 #define PROC_NAME "study_focus"
 
 static unsigned long prev_idle, prev_total;
 
 static void read_jiffies_vals(unsigned long *idle, unsigned long *total) {
-    struct kernel_cpustat st = kstat_cpu(0).cpustat;
-    unsigned long iowait = st[CPUTIME_IOWAIT];
-    *idle = st[CPUTIME_IDLE] + iowait;
-    *total = st[CPUTIME_USER] + st[CPUTIME_NICE] + st[CPUTIME_SYSTEM]
-           + *idle + st[CPUTIME_IRQ] + st[CPUTIME_SOFTIRQ] + st[CPUTIME_STEAL];
+    struct kernel_cpustat *st = &kcpustat_cpu(0);
+    unsigned long iowait = st->cpustat[CPUTIME_IOWAIT];
+
+    *idle = st->cpustat[CPUTIME_IDLE] + iowait;
+    *total = st->cpustat[CPUTIME_USER]
+           + st->cpustat[CPUTIME_NICE]
+           + st->cpustat[CPUTIME_SYSTEM]
+           + *idle
+           + st->cpustat[CPUTIME_IRQ]
+           + st->cpustat[CPUTIME_SOFTIRQ]
+           + st->cpustat[CPUTIME_STEAL];
 }
 
 static int proc_show(struct seq_file *m, void *v) {
@@ -24,7 +29,7 @@ static int proc_show(struct seq_file *m, void *v) {
 
     read_jiffies_vals(&idle, &total);
     if (prev_total == 0) {
-        prev_idle = idle;
+        prev_idle  = idle;
         prev_total = total;
         seq_printf(m, "initializing...\n");
         return 0;
@@ -61,10 +66,12 @@ static int __init sf_init(void) {
     pr_info("study_focus module loaded\n");
     return 0;
 }
+
 static void __exit sf_exit(void) {
     remove_proc_entry(PROC_NAME, NULL);
     pr_info("study_focus module unloaded\n");
 }
+
 module_init(sf_init);
 module_exit(sf_exit);
 MODULE_LICENSE("GPL");
