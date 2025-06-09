@@ -136,21 +136,23 @@ int main(int argc, char *argv[]) {
     
     print_header();
     
-    // Panggil system call (FIX: uncomment dan hapus dummy data)
-    long result = syscall(__NR_get_study_focus_info, &info);
+    // Baca dari /proc/study_focus (lebih mudah dari system call)
+    FILE *proc_file = fopen("/proc/study_focus", "r");
+    if (!proc_file) {
+        printf("❌ Error: Gagal membaca /proc/study_focus\n");
+        printf("   Pastikan kernel module sudah di-load!\n");
+        printf("   Jalankan: sudo insmod study_focus.ko\n");
+        return 1;
+    }
     
-    // HAPUS DUMMY DATA INI:
-    /*
-    info.active_time_sec = 3600;   // 1 jam
-    info.idle_time_sec   = 1800;   // 30 menit
-    info.focus_percent   =  (info.active_time_sec * 100) / 
-                        (info.active_time_sec + info.idle_time_sec);
-    */
+    int result = fscanf(proc_file, "%lu %lu %u", 
+                       &info.active_time_sec, 
+                       &info.idle_time_sec, 
+                       &info.focus_percent);
+    fclose(proc_file);
     
-    if (result == -1) {
-        printf("❌ Error: Gagal mengakses system call\n");
-        printf("   Pastikan kernel sudah dikompilasi dengan system call ini!\n");
-        printf("   Error detail: %s\n", strerror(errno));
+    if (result != 3) {
+        printf("❌ Error: Format data tidak valid dari /proc/study_focus\n");
         return 1;
     }
     
