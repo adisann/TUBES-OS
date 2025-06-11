@@ -17,4 +17,4 @@ sudo make install
 cp /boot/config-$(uname -r) .config
 
 
-https://g.co/gemini/share/5bfd07e5cd3d
+https://g.co/gemini/share/3c84cd11e637
