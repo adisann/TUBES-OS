@@ -1,6 +1,8 @@
 sudo cp /home/user/Documents/study_focus_monitor/study_focus_syscall.c /usr/src/linux-source-6.8.0/kernel/
 
 
+
+
 obj-y += study_focus_syscall.o
 
 asmlinkage long sys_get_study_focus_info(struct study_focus_info __user *info);
@@ -18,3 +20,7 @@ cp /boot/config-$(uname -r) .config
 
 
 https://g.co/gemini/share/3c84cd11e637
+
+
+
+https://g.co/gemini/share/86491892aafe
