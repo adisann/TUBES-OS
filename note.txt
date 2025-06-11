@@ -21,6 +21,6 @@ cp /boot/config-$(uname -r) .config
 
 https://g.co/gemini/share/3c84cd11e637
 
-
-
 https://g.co/gemini/share/86491892aafe
+
+https://g.co/gemini/share/a97b6eec1fbc
