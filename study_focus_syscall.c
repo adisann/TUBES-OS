@@ -6,83 +6,55 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
-
-// Struktur data untuk informasi fokus belajar
-struct study_focus_info {
-    unsigned long active_time_sec;
-    unsigned long idle_time_sec;
-    unsigned int focus_percent;
-};
+#include <linux/uaccess.h>  // Add this
 
 // System call number - harus disesuaikan dengan arsitektur
 #define __NR_get_study_focus_info 548
 
 // Fungsi untuk membaca idle time dari /proc/stat
+
 static unsigned long get_system_idle_time(void)
 {
     struct file *file;
     char *buffer;
     char *line_start, *token;
     unsigned long idle_time = 0;
-    int bytes_read;
-    mm_segment_t old_fs;
+    loff_t pos = 0;
+    ssize_t bytes_read;
     
-    // Alokasi buffer untuk membaca file
     buffer = kmalloc(1024, GFP_KERNEL);
     if (!buffer) {
         printk(KERN_ERR "study_focus: Failed to allocate buffer\n");
         return 0;
     }
     
-    // Ubah context untuk akses file system
-    old_fs = get_fs();
-    set_fs(KERNEL_DS);
-    
-    // Buka file /proc/stat
     file = filp_open("/proc/stat", O_RDONLY, 0);
     if (IS_ERR(file)) {
         printk(KERN_ERR "study_focus: Cannot open /proc/stat\n");
-        set_fs(old_fs);
         kfree(buffer);
         return 0;
     }
     
-    // Baca isi file
-    bytes_read = kernel_read(file, buffer, 1023, &file->f_pos);
+    bytes_read = kernel_read(file, buffer, 1023, &pos);
     if (bytes_read > 0) {
         buffer[bytes_read] = '\0';
-        
-        // Parse baris pertama (cpu line)
         line_start = buffer;
+        
         if (strncmp(line_start, "cpu ", 4) == 0) {
-            // Skip "cpu " dan 3 nilai pertama (user, nice, system)
             token = line_start + 4;
-            
-            // Skip user time
+            // Skip user, nice, system
+            for (int i = 0; i < 3; i++) {
+                while (*token == ' ') token++;
+                while (*token != ' ' && *token != '\0') token++;
+            }
+            // Get idle time
             while (*token == ' ') token++;
-            while (*token != ' ' && *token != '\0') token++;
-            
-            // Skip nice time  
-            while (*token == ' ') token++;
-            while (*token != ' ' && *token != '\0') token++;
-            
-            // Skip system time
-            while (*token == ' ') token++;  
-            while (*token != ' ' && *token != '\0') token++;
-            
-            // Ambil idle time (nilai ke-4)
-            while (*token == ' ') token++;
-            idle_time = simple_strtoul(token, NULL, 10);
-            
-            // Konversi dari jiffies ke detik
-            idle_time = idle_time / HZ;
+            idle_time = simple_strtoul(token, NULL, 10) / HZ;
         }
     }
     
     filp_close(file, NULL);
-    set_fs(old_fs);
     kfree(buffer);
-    
     return idle_time;
 }
 
