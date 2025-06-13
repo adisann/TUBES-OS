@@ -629,7 +629,7 @@ xinu/
 **Semoga panduan ini memudahkan Anda dalam menyusun laporan praktikum Study Focus Monitor. Selamat mengerjakan!**
 
 
-
+```c
 /* getstudystats.c - getstudystats dengan deteksi keyboard sederhana */
 #include <xinu.h>
 #include <study.h>
@@ -752,3 +752,4 @@ int check_tty_input(void) {
     /* Method C: Placeholder - selalu return 0 jika tidak ada implementasi */
     return 0;
 }
+```
