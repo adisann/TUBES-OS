@@ -1,0 +1,225 @@
+# Panduan Implementasi Custom System Call: Study Focus Monitor di Xinu
+
+## PENTING:
+- Pastikan Anda berada di direktori yang benar (`/home/xinu/`) sebelum menjalankan perintah
+- Gunakan editor teks pilihan Anda (`nano`, `vim`, dll.)
+- Ikuti struktur yang sama seperti syscall `chname` di website
+
+## Langkah-Langkah Implementasi
+
+### Tahap 1: Membuat System Call Baru (`getstudystats`)
+
+#### 1. Buat File Syscall Baru
+- **Perintah:** `touch xinu/system/getstudystats.c`
+- **Deskripsi Screenshot:** "Inisialisasi file `getstudystats.c` dalam direktori `/xinu/system/` sebagai wadah implementasi system call Study Focus Monitor"
+
+#### 2. Buat Header File untuk Struktur Data
+- **Perintah:** `nano xinu/include/study.h`
+- **Deskripsi Screenshot:** "Pembuatan header file `study.h` untuk mendefinisikan struktur data study_stats"
+- **Isi File:**
+```c
+/* study.h - definisi struktur Study Focus Monitor */
+
+#ifndef _STUDY_H_
+#define _STUDY_H_
+
+struct study_stats {
+    uint32  active_time;    /* waktu CPU aktif dalam ticks */
+    uint32  idle_time;      /* waktu CPU idle dalam ticks */
+    uint32  focus_percent;  /* persentase fokus (0-100) */
+};
+
+#endif
+```
+
+#### 3. Implementasi Kode `getstudystats.c`
+- **Perintah:** `nano xinu/system/getstudystats.c`
+- **Deskripsi Screenshot:** "Implementasi kode system call `getstudystats()` dengan logika perhitungan study focus"
+- **Template Kode:**
+```c
+/* getstudystats.c - implementasi Study Focus Monitor */
+
+#include <xinu.h>
+#include <study.h>
+
+syscall getstudystats(struct study_stats *stats)
+{
+    intmask mask;
+    uint32 total_time;
+    
+    /* Disable interrupts untuk konsistensi data */
+    mask = disable();
+    
+    /* Validasi pointer input */
+    if (stats == NULL) {
+        restore(mask);
+        return SYSERR;
+    }
+    
+    /* Hitung waktu berdasarkan variabel global Xinu */
+    // TODO: Implementasikan logika perhitungan
+    // - Gunakan clktime untuk total ticks
+    // - Gunakan clkidle untuk idle ticks
+    // - Hitung active_time, idle_time, focus_percent
+    
+    /* Restore interrupts */
+    restore(mask);
+    
+    return OK;
+}
+```
+
+#### 4. Deklarasikan Syscall di `prototypes.h`
+- **Perintah:** `nano xinu/include/prototypes.h`
+- **Tambahkan Baris:** (setelah syscall lainnya)
+```c
+extern syscall getstudystats(struct study_stats *); /* in file getstudystats.c */
+```
+- **Deskripsi Screenshot:** "Penambahan prototipe fungsi `getstudystats()` ke `prototypes.h` untuk aksesibilitas global"
+
+#### 5. Include Header di `xinu.h`
+- **Perintah:** `nano xinu/include/xinu.h`
+- **Tambahkan:** `#include <study.h>` (setelah include lainnya)
+- **Deskripsi Screenshot:** "Penambahan include `study.h` di `xinu.h` untuk integrasi dengan sistem"
+
+#### 6. Kompilasi Ulang Xinu (Pertama)
+- **Perintah:**
+```bash
+cd xinu/compile
+make clean
+make
+```
+- **Deskripsi Screenshot:** "Kompilasi pertama untuk mengintegrasikan system call `getstudystats()` ke dalam kernel Xinu"
+
+### Tahap 2: Membuat Program Test
+
+#### 7. Buat File Test Program
+- **Perintah:** `touch xinu/test/studytest.c`
+- **Deskripsi Screenshot:** "Pembuatan file test program untuk menguji fungsionalitas Study Focus Monitor"
+
+#### 8. Implementasi Test Program
+- **Perintah:** `nano xinu/test/studytest.c`
+- **Template Kode:**
+```c
+/* studytest.c - test program untuk Study Focus Monitor */
+
+#include <xinu.h>
+#include <study.h>
+
+int main(int argc, char *argv[])
+{
+    struct study_stats stats;
+    
+    kprintf("=== Study Focus Monitor Test ===\n");
+    
+    /* Panggil system call */
+    if (getstudystats(&stats) == SYSERR) {
+        kprintf("Error: Gagal mendapatkan study stats\n");
+        return 1;
+    }
+    
+    /* Tampilkan hasil */
+    kprintf("Active Time: %d ticks\n", stats.active_time);
+    kprintf("Idle Time: %d ticks\n", stats.idle_time);
+    kprintf("Focus Percentage: %d%%\n", stats.focus_percent);
+    
+    return 0;
+}
+```
+
+#### 9. Buat Shell Command (Opsional)
+- **Perintah:** `nano xinu/shell/xsh_studytest.c`
+- **Deskripsi Screenshot:** "Pembuatan shell command untuk memudahkan testing dari Xinu shell"
+
+#### 10. Update Makefile
+- **Perintah:** `nano xinu/compile/Makefile`
+- **Tambahkan:** File `getstudystats.c` dan `studytest.c` ke dalam target kompilasi
+- **Deskripsi Screenshot:** "Modifikasi Makefile untuk menyertakan file-file baru dalam proses kompilasi"
+
+#### 11. Kompilasi Ulang Xinu (Kedua)
+- **Perintah:**
+```bash
+make clean
+make
+```
+- **Deskripsi Screenshot:** "Kompilasi kedua untuk mengintegrasikan test program ke dalam image Xinu"
+
+### Tahap 3: Testing dan Validasi
+
+#### 12. Jalankan `minicom`
+- **Perintah:** `sudo minicom` (Password: `xinurocks`)
+- **Deskripsi Screenshot:** "Inisialisasi minicom untuk komunikasi dengan backend Xinu VM"
+
+#### 13. Start Backend VM
+- **Aksi:** Nyalakan backend vm dari VirtualBox, tunggu hingga "Welcome to GRUB!"
+- **Deskripsi Screenshot:** "Proses booting backend VM menampilkan GRUB loader"
+
+#### 14. Login dan Tunggu Prompt `xsh$`
+- **Deskripsi Screenshot:** "Shell prompt Xinu (`xsh$`) aktif, sistem siap menerima perintah"
+
+#### 15. Uji System Call
+- **Perintah:** `studytest` (atau cara alternatif yang Anda implementasikan)
+- **Deskripsi Screenshot:** "Hasil eksekusi test program menampilkan statistik study focus dengan data active time, idle time, dan focus percentage"
+
+#### 16. Validasi Error Handling
+- **Test Case:** Coba panggil dengan parameter NULL untuk memastikan error handling bekerja
+- **Deskripsi Screenshot:** "Validasi error handling saat parameter NULL diberikan"
+
+## Kriteria Penilaian yang Harus Dipenuhi
+
+### 1. Fungsi System Call ✓
+- [ ] System call dapat mengembalikan data yang valid
+- [ ] Perhitungan active_time, idle_time, dan focus_percent benar
+- [ ] Menggunakan variabel global Xinu (clktime, clkidle) dengan tepat
+
+### 2. Error Handling ✓
+- [ ] Handle kasus pointer NULL dengan mengembalikan SYSERR
+- [ ] Proper interrupt disable/restore untuk konsistensi data
+
+### 3. Komentar Kode ✓
+- [ ] Setiap bagian kritis dijelaskan dengan komentar
+- [ ] Dokumentasi fungsi dan parameter
+- [ ] Penjelasan logika perhitungan
+
+### 4. Integrasi dengan Sistem ✓
+- [ ] Deklarasi yang benar di header files
+- [ ] Kompilasi berhasil tanpa error
+- [ ] Test program berfungsi dengan baik
+
+## Tips Implementation
+
+1. **Perhitungan Focus Percentage:**
+   - Pastikan tidak ada division by zero
+   - Gunakan rumus: `(active_time / total_time) * 100`
+
+2. **Interrupt Handling:**
+   - Selalu disable interrupt saat akses variabel global
+   - Restore interrupt sebelum return
+
+3. **Validasi Input:**
+   - Cek pointer NULL sebelum akses
+   - Return SYSERR untuk input invalid
+
+4. **Testing:**
+   - Test dengan berbagai kondisi sistem
+   - Verifikasi hasil perhitungan manual
+
+## Struktur File yang Dimodifikasi
+
+```
+xinu/
+├── system/
+│   └── getstudystats.c        (NEW)
+├── include/
+│   ├── study.h                (NEW)
+│   ├── prototypes.h           (MODIFIED)
+│   └── xinu.h                 (MODIFIED)
+├── test/
+│   └── studytest.c            (NEW)
+├── shell/
+│   └── xsh_studytest.c        (OPTIONAL)
+└── compile/
+    └── Makefile               (MODIFIED)
+```
+
+Selamat mengerjakan! Pastikan setiap langkah di-screenshot untuk laporan praktikum Anda.
