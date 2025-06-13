@@ -39,8 +39,6 @@ struct study_stats {
 - **Deskripsi Screenshot:** "Implementasi kode system call `getstudystats()` dengan logika perhitungan study focus"
 - **Template Kode:**
 ```c
-/* getstudystats.c - implementasi Study Focus Monitor */
-
 #include <xinu.h>
 #include <study.h>
 
@@ -48,27 +46,30 @@ syscall getstudystats(struct study_stats *stats)
 {
     intmask mask;
     uint32 total_time;
-    
-    /* Disable interrupts untuk konsistensi data */
-    mask = disable();
-    
-    /* Validasi pointer input */
+
+    mask = disable();  // Disable interrupt untuk data konsisten
+
     if (stats == NULL) {
         restore(mask);
         return SYSERR;
     }
-    
-    /* Hitung waktu berdasarkan variabel global Xinu */
-    // TODO: Implementasikan logika perhitungan
-    // - Gunakan clktime untuk total ticks
-    // - Gunakan clkidle untuk idle ticks
-    // - Hitung active_time, idle_time, focus_percent
-    
-    /* Restore interrupts */
+
+    total_time = clktime + clkidle;
+
+    if (total_time == 0) {
+        stats->active_time = 0;
+        stats->idle_time = 0;
+        stats->focus_percent = 0;
+    } else {
+        stats->active_time = clktime;
+        stats->idle_time = clkidle;
+        stats->focus_percent = (clktime * 100) / total_time;
+    }
+
     restore(mask);
-    
     return OK;
 }
+
 ```
 
 #### 4. Deklarasikan Syscall di `prototypes.h`
@@ -132,11 +133,38 @@ int main(int argc, char *argv[])
 #### 9. Buat Shell Command (Opsional)
 - **Perintah:** `nano xinu/shell/xsh_studytest.c`
 - **Deskripsi Screenshot:** "Pembuatan shell command untuk memudahkan testing dari Xinu shell"
+```c
+#include <xinu.h>
+#include <study.h>
+
+command xsh_studytest(int nargs, char *args[])
+{
+    struct study_stats stats;
+    kprintf("\nRunning Study Focus Monitor via shell...\n");
+
+    if (getstudystats(&stats) == SYSERR) {
+        kprintf("Error: Tidak bisa ambil data.\n");
+        return 1;
+    }
+
+    kprintf("Active: %d, Idle: %d, Focus: %d%%\n",
+        stats.active_time, stats.idle_time, stats.focus_percent);
+
+    return 0;
+}
+
+```
+
 
 #### 10. Update Makefile
 - **Perintah:** `nano xinu/compile/Makefile`
 - **Tambahkan:** File `getstudystats.c` dan `studytest.c` ke dalam target kompilasi
 - **Deskripsi Screenshot:** "Modifikasi Makefile untuk menyertakan file-file baru dalam proses kompilasi"
+
+system/getstudystats.o \
+test/studytest.o \
+(Sesuaikan jika menggunakan xsh_studytest.o juga)
+
 
 #### 11. Kompilasi Ulang Xinu (Kedua)
 - **Perintah:**
