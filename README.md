@@ -753,3 +753,90 @@ int check_tty_input(void) {
     return 0;
 }
 ```
+
+
+```c
+
+
+/* getstudystats.c - versi simpel dengan debug */
+#include <xinu.h>
+#include <study.h>
+
+/* Global variables untuk tracking */
+static uint32 last_command_time = 0;
+static uint32 total_idle_time = 0;
+static uint32 total_active_time = 0;
+static uint32 system_start_time = 0;
+static uint32 last_check_time = 0;
+
+syscall getstudystats(struct study_stats *stats) {
+    intmask mask;
+    uint32 current_time;
+    uint32 time_since_last_check;
+    uint32 time_since_last_command;
+    
+    mask = disable();
+    
+    if (stats == NULL) {
+        restore(mask);
+        return SYSERR;
+    }
+    
+    current_time = clktime;
+    
+    /* First call - initialize */
+    if (system_start_time == 0) {
+        system_start_time = current_time;
+        last_command_time = current_time;
+        last_check_time = current_time;
+        
+        stats->active_time = 0;
+        stats->idle_time = 0;
+        stats->focus_percent = 100;
+        
+        restore(mask);
+        return OK;
+    }
+    
+    /* Ada command baru = update waktu command terakhir */
+    last_command_time = current_time;
+    
+    /* Hitung waktu yang sudah berlalu sejak check terakhir */
+    time_since_last_check = current_time - last_check_time;
+    time_since_last_command = current_time - last_command_time;
+    
+    /* Simpel: jika > 10 detik tidak ada command = idle */
+    if (time_since_last_command > 10) {
+        total_idle_time += time_since_last_check;
+    } else {
+        total_active_time += time_since_last_check;
+    }
+    
+    /* Update stats */
+    stats->active_time = total_active_time;
+    stats->idle_time = total_idle_time;
+    
+    uint32 total_time = total_active_time + total_idle_time;
+    if (total_time > 0) {
+        stats->focus_percent = (total_active_time * 100) / total_time;
+    } else {
+        stats->focus_percent = 100;
+    }
+    
+    last_check_time = current_time;
+    
+    /* Debug info */
+    kprintf("\n=== Study Stats Debug ===\n");
+    kprintf("Command detected: YES\n");
+    kprintf("Time since last command: %d ticks\n", time_since_last_command);
+    kprintf("Time since last check: %d ticks\n", time_since_last_check);
+    kprintf("Status: %s\n", (time_since_last_command > 10) ? "IDLE" : "ACTIVE");
+    kprintf("Active time: %d, Idle time: %d\n", total_active_time, total_idle_time);
+    kprintf("===========================\n\n");
+    
+    restore(mask);
+    return OK;
+}
+
+
+```
