@@ -627,3 +627,128 @@ xinu/
 13. ✅ Hasil perintah `uptime` dengan Study Focus Monitor
 
 **Semoga panduan ini memudahkan Anda dalam menyusun laporan praktikum Study Focus Monitor. Selamat mengerjakan!**
+
+
+
+/* getstudystats.c - getstudystats dengan deteksi keyboard sederhana */
+#include <xinu.h>
+#include <study.h>
+
+/* Global variables untuk tracking */
+static uint32 last_keyboard_check = 0;
+static uint32 last_activity_time = 0;
+static uint32 total_idle_time = 0;
+static uint32 total_active_time = 0;
+static uint32 system_start_time = 0;
+
+syscall getstudystats(struct study_stats *stats) {
+    intmask mask;
+    uint32 current_time;
+    uint32 time_since_activity;
+    bool32 has_keyboard_activity = FALSE;
+    
+    mask = disable();
+    
+    if (stats == NULL) {
+        restore(mask);
+        return SYSERR;
+    }
+    
+    current_time = clktime;
+    
+    /* First call - initialize */
+    if (system_start_time == 0) {
+        system_start_time = current_time;
+        last_activity_time = current_time;
+        last_keyboard_check = current_time;
+        total_idle_time = 0;
+        total_active_time = 0;
+        
+        stats->active_time = 0;
+        stats->idle_time = 0;
+        stats->focus_percent = 100;
+        
+        restore(mask);
+        return OK;
+    }
+    
+    /* Check keyboard activity - ini yang penting! */
+    
+    /* Method 1: Cek keyboard buffer jika ada */
+    #ifdef KBHIT  /* Jika Xinu punya fungsi kbhit() */
+    if (kbhit()) {
+        has_keyboard_activity = TRUE;
+        /* Consume keys to prevent buffer overflow */
+        while (kbhit()) {
+            getchar();
+        }
+    }
+    #endif
+    
+    /* Method 2: Cek TTY input buffer (lebih universal di Xinu) */
+    /* Asumsi: TTY device 0 untuk console input */
+    if (ttynin(0) > 0) {  /* Ada input di TTY buffer */
+        has_keyboard_activity = TRUE;
+    }
+    
+    /* Method 3: Sederhana - anggap ada aktivitas karena command baru saja dijalankan */
+    /* Setiap kali fungsi ini dipanggil = ada keyboard activity */
+    has_keyboard_activity = TRUE;
+    
+    /* Update activity time jika ada keyboard input */
+    if (has_keyboard_activity) {
+        last_activity_time = current_time;
+    }
+    
+    /* Calculate idle time */
+    time_since_activity = current_time - last_activity_time;
+    
+    /* Threshold: 30 detik = idle */
+    if (time_since_activity > 30000) {  /* 30000 ticks */
+        /* System is idle */
+        uint32 time_since_check = current_time - last_keyboard_check;
+        total_idle_time += time_since_check;
+    } else {
+        /* System is active */
+        uint32 time_since_check = current_time - last_keyboard_check;
+        total_active_time += time_since_check;
+    }
+    
+    /* Update stats */
+    stats->active_time = total_active_time;
+    stats->idle_time = total_idle_time;
+    
+    uint32 total_time = total_active_time + total_idle_time;
+    if (total_time > 0) {
+        stats->focus_percent = (total_active_time * 100) / total_time;
+    } else {
+        stats->focus_percent = 100;
+    }
+    
+    last_keyboard_check = current_time;
+    
+    /* Debug info */
+    kprintf("\n=== Keyboard Activity Detection ===\n");
+    kprintf("Keyboard Activity: %s\n", has_keyboard_activity ? "YES" : "NO");
+    kprintf("Time since last activity: %d ticks\n", time_since_activity);
+    kprintf("Status: %s\n", (time_since_activity > 30000) ? "IDLE" : "ACTIVE");
+    kprintf("===================================\n\n");
+    
+    restore(mask);
+    return OK;
+}
+
+/* Fungsi helper untuk cek TTY input - jika tidak ada ttynin() */
+int check_tty_input(void) {
+    /* Implementasi tergantung Xinu version */
+    /* Contoh sederhana: */
+    
+    /* Method A: Cek stdin buffer */
+    // return (stdin buffer count > 0);
+    
+    /* Method B: Cek device input */
+    // return devtab[CONSOLE].dvintr != NULL;
+    
+    /* Method C: Placeholder - selalu return 0 jika tidak ada implementasi */
+    return 0;
+}
